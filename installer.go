@@ -1,11 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/user"
 	"path/filepath"
+	"syscall"
 )
 
 func getHomeDirectory() string {
@@ -22,7 +24,7 @@ func concat(a string, b string) string {
 }
 
 func symlink(file string, target string) error {
-	err := os.Symlink(file, target)
+	err := syscall.Link(file, target)
 	if err != nil {
 		fmt.Println("symlink status:", err)
 	}
@@ -41,40 +43,48 @@ func mapToHomeDir(name string) string {
 	return concat(getHomeDirectory(), "/"+name)
 }
 
-func install(path string, file os.FileInfo) {
+func install(path string, file os.FileInfo, force bool) {
 	if file.IsDir() {
-		fmt.Printf("Ignore %+v to install ", file.Name())
+		fmt.Printf("Ignore %+v to install, path: %+v \n", file.Name(), path)
 		return
 	}
-	symlink(path, mapToHomeDir(file.Name()))
+	target := mapToHomeDir(file.Name())
+	if force {
+		syscall.Unlink(target)
+		symlink(path, target)
+		return
+	}
+	symlink(path, target)
 }
 
-func walkFunc(path string, info os.FileInfo, err error) error {
-	if err != nil {
-		fmt.Printf("errors: %+v \n", err)
-		return err
+func generateWalkFunc(force bool) filepath.WalkFunc {
+	return func(path string, info os.FileInfo, err error) error {
+		fmt.Println("hit file or dir: ", info.Name())
+		if err != nil {
+			fmt.Printf("errors: %+v \n", err)
+			return err
+		}
+
+		if info.IsDir() && isStringStartWithDotButNotDot(info.Name()) {
+			fmt.Printf("skipping a dir without errors: %+v \n", info.Name())
+			return filepath.SkipDir
+		}
+
+		// if string(nth(info.Name(), 0)) == "." {
+		// 	fmt.Printf("skipping a hidden file: %+v \n", info.Name())
+		// 	return filepath.SkipDir
+		// }
+
+		fmt.Printf("visited file or dir: %q\n", info.Name())
+		install(path, info, force)
+		return nil
 	}
-
-	if info.IsDir() && isStringStartWithDotButNotDot(info.Name()) {
-		fmt.Printf("skipping a dir without errors: %+v \n", info.Name())
-		return filepath.SkipDir
-	}
-
-	// if string(nth(info.Name(), 0)) == "." {
-	// 	fmt.Printf("skipping a hidden file: %+v \n", info.Name())
-	// 	return filepath.SkipDir
-	// }
-
-	fmt.Printf("visited file or dir: %q\n", info.Name())
-	install(path, info)
-	return nil
 }
 
 func main() {
-	// home := getHomeDirectory()
-	// file := concat(home, "/chi.txt")
-	// target := concat(home, "/.go/chi-link.txt")
-	// err := os.Symlink(file, target)
-	filepath.Walk("dotfiles/", walkFunc)
-	// fmt.Println("symlink status:", err)
+	force := flag.Bool("force", false, "a bool")
+
+	flag.Parse()
+
+	filepath.Walk("dotfiles/", generateWalkFunc(*force))
 }

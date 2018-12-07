@@ -23,10 +23,12 @@ func concat(a string, b string) string {
 }
 
 func handleSymlinkError(err error) error {
-	fmt.Printf("Symlink error: %+v. ", err)
-	if err != nil && os.IsExist(err) {
-		fmt.Printf("-force to overwrite\n")
-		return err
+	if err != nil {
+		fmt.Printf("Symlink error: %+v. ", err)
+		if os.IsExist(err) {
+			fmt.Printf("-force to overwrite\n")
+			return err
+		}
 	}
 	return err
 }
@@ -55,7 +57,7 @@ func mapToHomeDir(name string) string {
 
 func install(path string, file os.FileInfo, force bool) {
 	if file.IsDir() {
-		fmt.Printf("Ignore %+v to install, path: %+v \n", file.Name(), path)
+		fmt.Printf("Ignore dir file %+v to install, path: %+v \n", file.Name(), path)
 		return
 	}
 	target := mapToHomeDir(file.Name())
@@ -92,4 +94,5 @@ func main() {
 	flag.Parse()
 
 	filepath.Walk(*wordPtr, generateWalkFunc(*force))
+	fmt.Printf("Done.\n")
 }

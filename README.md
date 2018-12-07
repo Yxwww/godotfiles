@@ -1,2 +1,3 @@
-# go-dotfile
-# go-dotfile
+# godotfiles
+
+`godotfiles` helps managing dotfiles

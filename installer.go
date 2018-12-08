@@ -22,9 +22,9 @@ func concat(a string, b string) string {
 	return a + b
 }
 
-func handleSymlinkError(err error) error {
+func handleSymlinkError(err error, file string) error {
 	if err != nil {
-		fmt.Printf("Symlink error: %+v. ", err)
+		fmt.Printf("Symlink error installing %+v: %+v. ", file, err)
 		if os.IsExist(err) {
 			fmt.Printf("-force to overwrite\n")
 			return err
@@ -35,7 +35,7 @@ func handleSymlinkError(err error) error {
 
 func symlink(file string, target string) error {
 	err := syscall.Link(file, target)
-	handleSymlinkError(err)
+	handleSymlinkError(err, file)
 	if err != nil {
 		return err
 	}
